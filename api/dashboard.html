@@ -1,0 +1,2394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Data Intelligence Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e4e4e4;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .market-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+        }
+
+        .market-status.open {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+
+        .market-status.closed {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+            border: 1px solid #ff6464;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Search Styles */
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            padding-left: 40px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: #666;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1a2e;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            max-height: 350px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 14px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: rgba(0, 212, 255, 0.12);
+            padding-left: 20px;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-symbol {
+            font-weight: 700;
+            color: #00ff88;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+        }
+
+        .search-result-name {
+            font-size: 0.85rem;
+            color: #bbb;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-exchange {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .sector-badge {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-loading {
+            padding: 20px;
+            text-align: center;
+            color: #888;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 12px 0 8px;
+            background: transparent;
+            font-weight: 600;
+        }
+
+        .company-list {
+            list-style: none;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        
+        .company-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .company-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .company-list::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        .company-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 255, 0.5);
+        }
+
+        .company-list li {
+            padding: 14px 16px;
+            margin-bottom: 6px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .company-list li:hover {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.2);
+            transform: translateX(4px);
+        }
+
+        .company-list li.active {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 255, 136, 0.1));
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.15);
+        }
+
+        .company-list .symbol {
+            font-weight: 700;
+            color: #00ff88;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+        }
+
+        .company-list .name {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .company-list .sector {
+            display: inline-block;
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 6px;
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .company-list li.active .sector {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 8px;
+            color: #fff;
+        }
+
+        .stat-card .value.positive {
+            color: #00ff88;
+        }
+
+        .stat-card .value.negative {
+            color: #ff6464;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+
+        .health-score {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            padding: 4px;
+            background: conic-gradient(var(--score-color) var(--score-pct), transparent var(--score-pct));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+        }
+
+        .score-details {
+            flex: 1;
+        }
+
+        .score-category {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .score-description {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .score-components {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .component {
+            font-size: 0.85rem;
+        }
+
+        .component .name {
+            color: #888;
+        }
+
+        .component .val {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #888;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 212, 255, 0.3);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #ff6464;
+        }
+
+        .compare-section {
+            margin-top: 20px;
+        }
+
+        .compare-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .compare-input {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .compare-input input {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .compare-input input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .compare-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1a2e;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .compare-suggestions.active {
+            display: block;
+        }
+
+        .compare-suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .compare-suggestion-item:hover {
+            background: rgba(0, 212, 255, 0.15);
+        }
+
+        .compare-form button {
+            padding: 10px 25px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .compare-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .comparison-result {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .comparison-result {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .comparison-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .comparison-card h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+        }
+
+        .correlation-info {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .correlation-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: #888;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .recent-searches {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .recent-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .recent-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .recent-tag {
+            padding: 5px 12px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #00d4ff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .recent-tag:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        /* Sector Filter Styles */
+        .sector-filter-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sector-filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            max-height: 160px;
+            overflow-y: auto;
+            padding: 2px;
+        }
+        
+        .sector-filter-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .sector-filter-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .sector-filter-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .sector-filter-btn {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.03);
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.25s;
+            white-space: nowrap;
+        }
+
+        .sector-filter-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #fff;
+            transform: scale(1.03);
+        }
+
+        .sector-filter-btn.active {
+            background: linear-gradient(135deg, var(--sector-color, #00d4ff)20, var(--sector-color, #00d4ff)10);
+            border-color: var(--sector-color, #00d4ff);
+            color: var(--sector-color, #00d4ff);
+            font-weight: 600;
+        }
+
+        .sector-filter-btn .sector-icon {
+            margin-right: 4px;
+        }
+
+        /* Exchange Toggle Buttons */
+        .exchange-btn {
+            padding: 8px 20px;
+            border: none;
+            background: transparent;
+            color: #666;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .exchange-btn:hover {
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .exchange-btn.active {
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            color: #000;
+        }
+
+        .exchange-btn:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .exchange-btn:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+        .exchange-price {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .exchange-price .label {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .exchange-price .price {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .exchange-price.nse .price {
+            color: #00d4ff;
+        }
+
+        .exchange-price.bse .price {
+            color: #00ff88;
+        }
+
+        .price-diff-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .price-diff-badge.positive {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .price-diff-badge.negative {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+        }
+
+        .price-diff-badge.neutral {
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Stock Data Intelligence Dashboard</h1>
+            <p>Search any stock worldwide - Real-time analysis powered by Yahoo Finance</p>
+            <div id="marketStatus" class="market-status closed">Loading...</div>
+        </header>
+
+        <div class="grid">
+            <aside class="card">
+                <h2>
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    Search Stocks
+                </h2>
+                
+                <!-- Search Box -->
+                <div class="search-container">
+                    <svg class="search-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    <input type="text" id="stockSearch" class="search-input" placeholder="Search any stock (e.g., AAPL, TSLA, RELIANCE)">
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+
+                <!-- Recent Searches -->
+                <div id="recentSearches" class="recent-searches" style="display: none;">
+                    <div class="recent-label">Recent Searches</div>
+                    <div id="recentTags" class="recent-tags"></div>
+                </div>
+
+                <!-- Sector Filter -->
+                <div class="sector-filter-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <button id="nifty50Btn" onclick="showNifty50()" style="
+                            background: linear-gradient(135deg, #00d4ff, #00ff88);
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 25px;
+                            color: #000;
+                            font-weight: 700;
+                            cursor: pointer;
+                            font-size: 0.85rem;
+                            letter-spacing: 0.5px;
+                            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+                            transition: all 0.3s;
+                        " onmouseover="this.style.boxShadow='0 6px 20px rgba(0, 212, 255, 0.5)'" onmouseout="this.style.boxShadow='0 4px 15px rgba(0, 212, 255, 0.3)'">📈 Nifty 50</button>
+                        <button id="clearSectorFilter" onclick="clearSectorFilter()" style="
+                            display: none; 
+                            background: none; 
+                            border: none; 
+                            color: #00d4ff; 
+                            font-size: 0.75rem; 
+                            cursor: pointer;
+                        ">Clear</button>
+                    </div>
+                    <div id="sectorFilterContainer" class="sector-filter-container">
+                        <div class="search-loading"><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- Popular/Predefined Stocks -->
+                <div class="section-label">Nifty 50 Stocks</div>
+                <ul id="companyList" class="company-list">
+            </aside>
+
+            <main class="main-content">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="overview">Overview</button>
+                    <button class="tab-btn" data-tab="compare">Compare</button>
+                    <button class="tab-btn" data-tab="technical">Technical Analysis</button>
+                </div>
+
+                <div id="overviewTab" class="tab-content active">
+                    <div class="card">
+                        <h2 id="selectedStock">Search or select a stock to view data</h2>
+                        
+                        <!-- NSE/BSE Exchange Toggle for Indian Stocks -->
+                        <div id="exchangeToggle" style="display: none; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                                <div style="display: flex; background: rgba(0,0,0,0.3); border-radius: 8px; overflow: hidden;">
+                                    <button id="btnNSE" class="exchange-btn active" onclick="switchExchange('NSE')">
+                                        NSE
+                                    </button>
+                                    <button id="btnBSE" class="exchange-btn" onclick="switchExchange('BSE')">
+                                        BSE
+                                    </button>
+                                </div>
+                                <div id="exchangePrices" style="display: flex; gap: 20px; font-size: 0.9rem;"></div>
+                                <div id="priceDiffBadge" style="display: none; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="stockInfo" style="display: none; margin-bottom: 15px; padding: 12px 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 0.9rem;">
+                                <div>
+                                    <span style="color: #666;">Market:</span> 
+                                    <span id="stockCountry" style="color: #00d4ff;">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: #666;">Exchange:</span> 
+                                    <span id="stockExchange" style="color: #00ff88;">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: #666;">Sector:</span> 
+                                    <span id="stockSector">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: #666;">Currency:</span> 
+                                    <span id="stockCurrency">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: #666;">Market Cap:</span> 
+                                    <span id="stockMarketCap" style="color: #ffd700;">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="statsContainer" class="stats-grid" style="display: none;">
+                            <div class="stat-card">
+                                <div class="label">Latest Close</div>
+                                <div id="latestClose" class="value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">52W High</div>
+                                <div id="high52w" class="value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">52W Low</div>
+                                <div id="low52w" class="value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Avg Close</div>
+                                <div id="avgClose" class="value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Volatility</div>
+                                <div id="volatility" class="value">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="label">Total Return</div>
+                                <div id="totalReturn" class="value">-</div>
+                            </div>
+                        </div>
+
+                        <div id="healthScoreContainer" class="health-score" style="display: none;">
+                            <div class="score-circle" id="scoreCircle">
+                                <span id="scoreValue">-</span>
+                            </div>
+                            <div class="score-details">
+                                <div class="score-category" id="scoreCategory">-</div>
+                                <div class="score-description" id="scoreDescription">-</div>
+                                <div class="score-components">
+                                    <div class="component"><span class="name">Return:</span> <span class="val" id="returnScore">-</span></div>
+                                    <div class="component"><span class="name">Volatility:</span> <span class="val" id="volScore">-</span></div>
+                                    <div class="component"><span class="name">Trend:</span> <span class="val" id="trendScore">-</span></div>
+                                    <div class="component"><span class="name">Position:</span> <span class="val" id="posScore">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Price Chart (Last 30 Days)</h2>
+                        <div id="chartLoading" class="loading" style="display: none;">
+                            <div class="spinner"></div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="priceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="compareTab" class="tab-content">
+                    <div class="card compare-section">
+                        <h2>Compare Any Two Stocks</h2>
+                        <div class="compare-form">
+                            <div class="compare-input">
+                                <input type="text" id="compareInput1" placeholder="First stock (e.g., AAPL)">
+                                <div id="compareSuggestions1" class="compare-suggestions"></div>
+                            </div>
+                            <div class="compare-input">
+                                <input type="text" id="compareInput2" placeholder="Second stock (e.g., MSFT)">
+                                <div id="compareSuggestions2" class="compare-suggestions"></div>
+                            </div>
+                            <button onclick="compareStocks()">Compare</button>
+                        </div>
+
+                        <div id="comparisonResult" style="display: none;">
+                            <div class="comparison-result">
+                                <div class="comparison-card" id="compare1">
+                                    <h3 id="compare1Symbol">-</h3>
+                                    <div class="stat-card">
+                                        <div class="label">Avg Return</div>
+                                        <div id="compare1Return" class="value">-</div>
+                                    </div>
+                                    <div class="stat-card" style="margin-top: 10px;">
+                                        <div class="label">Volatility</div>
+                                        <div id="compare1Vol" class="value">-</div>
+                                    </div>
+                                    <div class="stat-card" style="margin-top: 10px;">
+                                        <div class="label">Total Return</div>
+                                        <div id="compare1Total" class="value">-</div>
+                                    </div>
+                                </div>
+                                <div class="comparison-card" id="compare2">
+                                    <h3 id="compare2Symbol">-</h3>
+                                    <div class="stat-card">
+                                        <div class="label">Avg Return</div>
+                                        <div id="compare2Return" class="value">-</div>
+                                    </div>
+                                    <div class="stat-card" style="margin-top: 10px;">
+                                        <div class="label">Volatility</div>
+                                        <div id="compare2Vol" class="value">-</div>
+                                    </div>
+                                    <div class="stat-card" style="margin-top: 10px;">
+                                        <div class="label">Total Return</div>
+                                        <div id="compare2Total" class="value">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="correlation-info">
+                                <div class="label">Price Correlation</div>
+                                <div id="correlationValue" class="correlation-value">-</div>
+                                <div id="correlationDesc" style="color: #888; margin-top: 5px;">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Analysis Tab -->
+                <div id="technicalTab" class="tab-content">
+                    <div id="technicalContent" style="display: none;">
+                        <!-- Chart Type Toggle -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <h2 style="margin: 0;">📊 Technical Analysis</h2>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <span style="color: #888; font-size: 0.85rem;">Chart:</span>
+                                    <button id="chartTypeCandle" class="exchange-btn active" onclick="switchChartType('candle')" style="padding: 6px 12px;">Candlestick</button>
+                                    <button id="chartTypeLine" class="exchange-btn" onclick="switchChartType('line')" style="padding: 6px 12px;">Line</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Candlestick Chart -->
+                        <div class="card">
+                            <h3>Candlestick Chart</h3>
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="candleChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Technical Indicators Grid -->
+                        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                            <!-- Trend -->
+                            <div class="stat-card">
+                                <div class="label">Trend</div>
+                                <div id="techTrend" class="value" style="font-size: 1.2rem;">-</div>
+                            </div>
+                            <!-- RSI -->
+                            <div class="stat-card">
+                                <div class="label">RSI (14)</div>
+                                <div id="techRSI" class="value">-</div>
+                                <div id="techRSISignal" style="font-size: 0.7rem; color: #888; margin-top: 4px;">-</div>
+                            </div>
+                            <!-- MACD -->
+                            <div class="stat-card">
+                                <div class="label">MACD</div>
+                                <div id="techMACD" class="value">-</div>
+                                <div id="techMACDSignal" style="font-size: 0.7rem; color: #888; margin-top: 4px;">-</div>
+                            </div>
+                            <!-- ATR -->
+                            <div class="stat-card">
+                                <div class="label">ATR (14)</div>
+                                <div id="techATR" class="value">-</div>
+                            </div>
+                        </div>
+
+                        <!-- RSI Chart -->
+                        <div class="card">
+                            <h3>RSI (Relative Strength Index)</h3>
+                            <div style="height: 150px; position: relative;">
+                                <canvas id="rsiChart"></canvas>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #666; margin-top: 5px;">
+                                <span>Oversold (30)</span>
+                                <span>Neutral (50)</span>
+                                <span>Overbought (70)</span>
+                            </div>
+                        </div>
+
+                        <!-- MACD Chart -->
+                        <div class="card">
+                            <h3>MACD (Moving Average Convergence Divergence)</h3>
+                            <div style="height: 150px; position: relative;">
+                                <canvas id="macdChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Bollinger Bands & MA Chart -->
+                        <div class="card">
+                            <h3>Bollinger Bands & Moving Averages</h3>
+                            <div class="chart-container" style="height: 350px;">
+                                <canvas id="bbChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Fair Value Gap & Support/Resistance -->
+                        <div class="card">
+                            <h3>📍 Fair Value Gaps & Levels</h3>
+                            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                                <div class="stat-card">
+                                    <div class="label">Support Level</div>
+                                    <div id="techSupport" class="value positive">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label">Resistance Level</div>
+                                    <div id="techResistance" class="value negative">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label">Bullish FVG (30d)</div>
+                                    <div id="techBullishFVG" class="value positive">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label">Bearish FVG (30d)</div>
+                                    <div id="techBearishFVG" class="value negative">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Moving Averages Status -->
+                        <div class="card">
+                            <h3>📈 Moving Averages Status</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #888;">MA 7</div>
+                                    <div id="ma7Price" style="font-size: 1.1rem; font-weight: 600; margin: 5px 0;">-</div>
+                                    <div id="ma7Status" style="font-size: 0.75rem;">-</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #888;">MA 20</div>
+                                    <div id="ma20Price" style="font-size: 1.1rem; font-weight: 600; margin: 5px 0;">-</div>
+                                    <div id="ma20Status" style="font-size: 0.75rem;">-</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #888;">MA 50</div>
+                                    <div id="ma50Price" style="font-size: 1.1rem; font-weight: 600; margin: 5px 0;">-</div>
+                                    <div id="ma50Status" style="font-size: 0.75rem;">-</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #888;">MA 200</div>
+                                    <div id="ma200Price" style="font-size: 1.1rem; font-weight: 600; margin: 5px 0;">-</div>
+                                    <div id="ma200Status" style="font-size: 0.75rem;">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bollinger Band Position -->
+                        <div class="card">
+                            <h3>Bollinger Band Analysis</h3>
+                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                                <div id="bbPosition" style="flex: 1; height: 30px; background: rgba(255,255,255,0.1); border-radius: 15px; position: relative; overflow: hidden;">
+                                    <div id="bbPositionBar" style="height: 100%; width: 50%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 15px; transition: width 0.3s;"></div>
+                                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; font-size: 0.7rem; color: #666;">
+                                        <span>BB Lower</span>
+                                        <span>Price</span>
+                                        <span>BB Upper</span>
+                                    </div>
+                                </div>
+                                <div id="bbPositionPct" style="font-weight: 600; min-width: 50px;">50%</div>
+                            </div>
+                            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                                <div class="stat-card">
+                                    <div class="label">BB Upper</div>
+                                    <div id="bbUpper" class="value" style="color: #ff6464;">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label">BB Middle</div>
+                                    <div id="bbMiddle" class="value">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label">BB Lower</div>
+                                    <div id="bbLower" class="value" style="color: #00ff88;">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="technicalEmpty" class="card">
+                        <div style="text-align: center; padding: 60px 20px; color: #888;">
+                            <div style="font-size: 3rem; margin-bottom: 15px;">📊</div>
+                            <div style="font-size: 1.2rem; margin-bottom: 10px;">No Stock Selected</div>
+                            <div>Search or select a stock to view technical analysis</div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer>
+            <p>Stock Data Intelligence Dashboard v1.0.0 | Data provided by Yahoo Finance</p>
+            <p style="margin-top: 10px;">Search any stock worldwide - US, India, Europe, Asia & more</p>
+        </footer>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE = '';
+
+        // Chart instance
+        let priceChart = null;
+
+        // Companies data
+        let companies = [];
+
+        // Search debounce timer
+        let searchTimer = null;
+
+        // Recent searches (from localStorage)
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+
+        // Sector data
+        let allSectors = [];
+        let selectedSector = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMarketStatus();
+            fetchCompanies();
+            fetchSectors();
+            setupTabs();
+            setupSearch();
+            setupCompareInputs();
+            renderRecentSearches();
+        });
+
+        // Tab functionality
+        function setupTabs() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+                });
+            });
+        }
+
+        // Setup search functionality
+        function setupSearch() {
+            const searchInput = document.getElementById('stockSearch');
+            const searchResults = document.getElementById('searchResults');
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                
+                clearTimeout(searchTimer);
+                
+                if (query.length < 1) {
+                    searchResults.classList.remove('active');
+                    return;
+                }
+
+                searchTimer = setTimeout(() => {
+                    performSearch(query);
+                }, 300);
+            });
+
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.trim().length > 0) {
+                    searchResults.classList.add('active');
+                }
+            });
+
+            // Close search results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    searchResults.classList.remove('active');
+                }
+            });
+
+            // Handle Enter key to search directly
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const query = searchInput.value.trim().toUpperCase();
+                    if (query) {
+                        selectCompany(query, query);
+                        searchResults.classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        // Perform search
+        async function performSearch(query) {
+            const searchResults = document.getElementById('searchResults');
+            searchResults.innerHTML = '<div class="search-loading"><div class="spinner"></div></div>';
+            searchResults.classList.add('active');
+
+            const queryLower = query.toLowerCase();
+
+            try {
+                // First, search in local Nifty 50 companies
+                const localResults = companies.filter(c => 
+                    c.symbol.toLowerCase().includes(queryLower) ||
+                    c.name.toLowerCase().includes(queryLower)
+                ).slice(0, 10);
+
+                // Then search Yahoo Finance
+                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+                const webResults = await response.json();
+
+                // Combine results - local first, then web results
+                let allResults = [];
+
+                // Add Nifty 50 section if local matches found
+                if (localResults.length > 0) {
+                    const localHtml = `
+                        <div class="section-label" style="padding: 8px 16px; background: rgba(0,212,255,0.1); color: #00d4ff; font-size: 0.7rem;">NIFTY 50</div>
+                        ${localResults.map(r => {
+                            const sectorColor = getSectorColor(r.sector);
+                            const sectorBadge = r.sector ? `<span class="sector-badge" style="background: ${sectorColor}20; color: ${sectorColor}; border: 1px solid ${sectorColor}50;">${r.sector}</span>` : '';
+                            const displaySymbol = r.symbol.replace('.NS', '').replace('.BO', '');
+                            return `
+                                <div class="search-result-item" onclick="selectCompany('${r.symbol}', '${r.name.replace(/'/g, "\\'")}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div class="search-result-symbol">${displaySymbol}</div>
+                                        ${sectorBadge}
+                                    </div>
+                                    <div class="search-result-name">${r.name}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    `;
+                    allResults.push({ type: 'html', content: localHtml });
+                }
+
+                // Add web results
+                if (webResults.length > 0) {
+                    const webHtml = webResults.slice(0, 10).map(r => {
+                        const sectorBadge = r.sector && r.sector !== 'Unknown' 
+                            ? `<span class="sector-badge" style="background: ${r.sector_color || '#666'}20; color: ${r.sector_color || '#666'}; border: 1px solid ${r.sector_color || '#666'}50;">${r.sector}</span>` 
+                            : '';
+                        const displaySymbol = r.symbol.replace('.NS', '').replace('.BO', '');
+                        return `
+                            <div class="search-result-item" onclick="selectCompany('${r.symbol}', '${r.name.replace(/'/g, "\\'")}')">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div class="search-result-symbol">${displaySymbol}</div>
+                                    ${sectorBadge}
+                                </div>
+                                <div class="search-result-name">${r.name}</div>
+                                <div class="search-result-exchange">${r.exchange} | ${r.type}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const webLabel = localResults.length > 0 ? 'WEB RESULTS' : '';
+                    const webHeader = webLabel ? `<div class="section-label" style="padding: 8px 16px; background: rgba(255,255,255,0.05); color: #888; font-size: 0.7rem;">${webLabel}</div>` : '';
+                    allResults.push({ type: 'html', content: webHeader + webHtml });
+                }
+
+                if (allResults.length === 0) {
+                    searchResults.innerHTML = `
+                        <div class="search-result-item" onclick="selectCompany('${query.toUpperCase()}', '${query.toUpperCase()}')">
+                            <div class="search-result-symbol">${query.toUpperCase()}</div>
+                            <div class="search-result-name">Search directly for "${query.toUpperCase()}"</div>
+                        </div>
+                    `;
+                } else {
+                    searchResults.innerHTML = allResults.map(r => r.content).join('');
+                }
+            } catch (error) {
+                console.error('Search failed:', error);
+                // Fallback to local search only
+                const localResults = companies.filter(c => 
+                    c.symbol.toLowerCase().includes(queryLower) ||
+                    c.name.toLowerCase().includes(queryLower)
+                );
+                
+                if (localResults.length > 0) {
+                    searchResults.innerHTML = localResults.map(r => {
+                        const displaySymbol = r.symbol.replace('.NS', '').replace('.BO', '');
+                        return `
+                            <div class="search-result-item" onclick="selectCompany('${r.symbol}', '${r.name.replace(/'/g, "\\'")}')">
+                                <div class="search-result-symbol">${displaySymbol}</div>
+                                <div class="search-result-name">${r.name}</div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    searchResults.innerHTML = `
+                        <div class="search-result-item" onclick="selectCompany('${query.toUpperCase()}', '${query.toUpperCase()}')">
+                            <div class="search-result-symbol">${query.toUpperCase()}</div>
+                            <div class="search-result-name">Search for "${query.toUpperCase()}"</div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Get sector color helper
+        function getSectorColor(sector) {
+            const colors = {
+                'Technology': '#00d4ff',
+                'Banking': '#2E7D32',
+                'Financial Services': '#4CAF50',
+                'Insurance': '#66BB6A',
+                'Energy': '#F44336',
+                'Oil & Gas': '#D32F2F',
+                'Utilities': '#9C27B0',
+                'Consumer Defensive': '#FFC107',
+                'Consumer Cyclical': '#FF9800',
+                'Automotive': '#EF5350',
+                'Pharmaceuticals': '#AD1457',
+                'Healthcare': '#E91E63',
+                'Industrials': '#795548',
+                'Basic Materials': '#607D8B',
+                'Mining': '#455A64',
+                'Construction': '#8D6E63',
+                'Real Estate': '#00BCD4',
+                'Telecommunications': '#303F9F',
+                'Renewable Energy': '#43A047',
+            };
+            return colors[sector] || '#888';
+        }
+
+        // Setup compare inputs with autocomplete
+        function setupCompareInputs() {
+            setupCompareInput('compareInput1', 'compareSuggestions1');
+            setupCompareInput('compareInput2', 'compareSuggestions2');
+        }
+
+        function setupCompareInput(inputId, suggestionsId) {
+            const input = document.getElementById(inputId);
+            const suggestions = document.getElementById(suggestionsId);
+            let timer = null;
+
+            input.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                clearTimeout(timer);
+
+                if (query.length < 1) {
+                    suggestions.classList.remove('active');
+                    return;
+                }
+
+                timer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+                        const results = await response.json();
+
+                        if (results.length > 0) {
+                            suggestions.innerHTML = results.slice(0, 5).map(r => `
+                                <div class="compare-suggestion-item" onclick="selectCompareSuggestion('${inputId}', '${r.symbol}')">
+                                    <span style="color: #00ff88; font-weight: 600;">${r.symbol}</span>
+                                    <span style="color: #888; font-size: 0.85rem; margin-left: 10px;">${r.name}</span>
+                                </div>
+                            `).join('');
+                            suggestions.classList.add('active');
+                        } else {
+                            suggestions.classList.remove('active');
+                        }
+                    } catch (error) {
+                        suggestions.classList.remove('active');
+                    }
+                }, 300);
+            });
+
+            input.addEventListener('focus', () => {
+                if (suggestions.children.length > 0) {
+                    suggestions.classList.add('active');
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.compare-input')) {
+                    suggestions.classList.remove('active');
+                }
+            });
+        }
+
+        function selectCompareSuggestion(inputId, symbol) {
+            document.getElementById(inputId).value = symbol;
+            document.getElementById(inputId.replace('Input', 'Suggestions')).classList.remove('active');
+        }
+
+        // Render recent searches
+        function renderRecentSearches() {
+            const container = document.getElementById('recentSearches');
+            const tagsContainer = document.getElementById('recentTags');
+            
+            if (recentSearches.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            tagsContainer.innerHTML = recentSearches.slice(0, 5).map(s => {
+                const displaySymbol = s.symbol.replace('.NS', '').replace('.BO', '');
+                return `<span class="recent-tag" onclick="selectCompany('${s.symbol}', '${(s.name || s.symbol).replace(/'/g, "\\'")}')">${displaySymbol}</span>`;
+            }).join('');
+        }
+
+        // Add to recent searches
+        function addToRecentSearches(symbol, name) {
+            // Remove if exists
+            recentSearches = recentSearches.filter(s => s.symbol !== symbol);
+            // Add to beginning
+            recentSearches.unshift({ symbol, name });
+            // Keep only 10
+            recentSearches = recentSearches.slice(0, 10);
+            // Save
+            localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+            renderRecentSearches();
+        }
+
+        // ==========================================
+        // Sector Filtering Functions
+        // ==========================================
+
+        // Fetch all sectors
+        async function fetchSectors() {
+            try {
+                const response = await fetch(`${API_BASE}/sectors`);
+                allSectors = await response.json();
+                renderSectorFilters();
+            } catch (error) {
+                console.error('Failed to fetch sectors:', error);
+                document.getElementById('sectorFilterContainer').innerHTML = 
+                    '<span style="color: #666; font-size: 0.8rem;">Failed to load sectors</span>';
+            }
+        }
+
+        // Render sector filter buttons
+        function renderSectorFilters() {
+            const container = document.getElementById('sectorFilterContainer');
+            
+            // Show only sectors that are relevant for Nifty 50 stocks
+            const niftySectors = [
+                'Technology', 'Banking', 'Financial Services', 'Energy', 
+                'Automotive', 'Consumer Defensive', 'Pharmaceuticals', 
+                'Healthcare', 'Industrials', 'Utilities', 'Oil & Gas',
+                'Basic Materials', 'Telecommunications', 'Real Estate',
+                'Construction', 'Renewable Energy', 'Mining'
+            ];
+            
+            // Filter sectors that exist in our data
+            const displaySectors = allSectors.filter(s => niftySectors.includes(s.name));
+            
+            container.innerHTML = displaySectors.map(s => `
+                <button class="sector-filter-btn ${selectedSector === s.name ? 'active' : ''}" 
+                        style="--sector-color: ${s.color};"
+                        onclick="toggleSectorFilter('${s.name}', '${s.color}')">
+                    <span class="sector-icon">${s.icon}</span>${s.name}
+                </button>
+            `).join('');
+        }
+
+        // Toggle sector filter
+        function toggleSectorFilter(sector, color) {
+            if (selectedSector === sector) {
+                // Deselect
+                selectedSector = null;
+                document.getElementById('clearSectorFilter').style.display = 'none';
+            } else {
+                // Select new sector
+                selectedSector = sector;
+                document.getElementById('clearSectorFilter').style.display = 'inline';
+            }
+            
+            // Re-render buttons to update active state
+            renderSectorFilters();
+            
+            // Update company list based on filter
+            filterCompaniesBySector();
+        }
+
+        // Clear sector filter
+        function clearSectorFilter() {
+            selectedSector = null;
+            document.getElementById('clearSectorFilter').style.display = 'none';
+            renderSectorFilters();
+            renderCompanyList(companies);
+        }
+
+        // Filter companies by selected sector
+        function filterCompaniesBySector() {
+            if (!selectedSector) {
+                renderCompanyList(companies);
+                return;
+            }
+            
+            // Filter predefined companies
+            const filtered = companies.filter(c => {
+                // Normalize sector comparison
+                const compSector = c.sector ? c.sector.toLowerCase() : '';
+                const selSector = selectedSector.toLowerCase();
+                return compSector.includes(selSector) || selSector.includes(compSector);
+            });
+            
+            if (filtered.length > 0) {
+                renderCompanyList(filtered);
+            } else {
+                // Show message that no predefined stocks match
+                document.getElementById('companyList').innerHTML = `
+                    <li style="color: #888; padding: 15px; text-align: center;">
+                        No popular stocks in "${selectedSector}"<br>
+                        <span style="font-size: 0.8rem;">Try searching for stocks in this sector</span>
+                    </li>
+                `;
+            }
+        }
+
+        // Show all Nifty 50 stocks
+        function showNifty50() {
+            selectedSector = null;
+            document.getElementById('clearSectorFilter').style.display = 'none';
+            renderSectorFilters();
+            renderCompanyList(companies);
+        }
+
+        // Fetch market status
+        async function fetchMarketStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/market-status`);
+                const data = await response.json();
+                const statusEl = document.getElementById('marketStatus');
+                statusEl.textContent = data.message;
+                statusEl.className = `market-status ${data.status}`;
+            } catch (error) {
+                console.error('Failed to fetch market status:', error);
+            }
+        }
+
+        // Fetch companies
+        async function fetchCompanies() {
+            try {
+                const response = await fetch(`${API_BASE}/companies`);
+                companies = await response.json();
+                renderCompanyList(companies);
+            } catch (error) {
+                console.error('Failed to fetch companies:', error);
+                document.getElementById('companyList').innerHTML = 
+                    '<li class="error">Failed to load companies</li>';
+            }
+        }
+
+        // Render company list
+        function renderCompanyList(companies) {
+            const list = document.getElementById('companyList');
+            list.innerHTML = companies.map(c => {
+                const displaySymbol = c.symbol.replace('.NS', '').replace('.BO', '');
+                return `
+                <li onclick="selectCompany('${c.symbol}', '${c.name.replace(/'/g, "\\'")}')" data-symbol="${c.symbol}">
+                    <div class="symbol">${displaySymbol}</div>
+                    <div class="name">${c.name}</div>
+                    <div class="sector">${c.sector}</div>
+                </li>
+            `}).join('');
+        }
+
+        // Select company
+        async function selectCompany(symbol, name) {
+            // Close search results
+            document.getElementById('searchResults').classList.remove('active');
+            document.getElementById('stockSearch').value = '';
+
+            // Update active state in list
+            document.querySelectorAll('.company-list li').forEach(li => {
+                li.classList.toggle('active', li.dataset.symbol === symbol);
+            });
+
+            document.getElementById('selectedStock').textContent = name ? `${name} (${symbol})` : symbol;
+
+            // Add to recent searches
+            addToRecentSearches(symbol, name || symbol);
+
+            // Store current symbol for exchange switching
+            currentStockSymbol = symbol;
+            currentExchange = symbol.endsWith('.BO') ? 'BSE' : 'NSE';
+
+            // Show loading
+            document.getElementById('chartLoading').style.display = 'flex';
+            document.getElementById('statsContainer').style.display = 'none';
+            document.getElementById('healthScoreContainer').style.display = 'none';
+            document.getElementById('stockInfo').style.display = 'none';
+            document.getElementById('exchangeToggle').style.display = 'none';
+
+            try {
+                // Fetch stock info, summary and data in parallel
+                const [infoRes, summaryRes, dataRes] = await Promise.all([
+                    fetch(`${API_BASE}/stock/${symbol}/info`).catch(() => null),
+                    fetch(`${API_BASE}/summary/${symbol}`),
+                    fetch(`${API_BASE}/data/${symbol}?days=30`)
+                ]);
+
+                // Handle stock info
+                if (infoRes && infoRes.ok) {
+                    const info = await infoRes.json();
+                    
+                    // Display sector with color
+                    const sectorEl = document.getElementById('stockSector');
+                    if (info.sector && info.sector !== 'Unknown') {
+                        sectorEl.innerHTML = `<span style="color: ${info.sector_color || '#888'};">${info.sector_icon || ''} ${info.sector}</span>`;
+                    } else {
+                        sectorEl.textContent = 'N/A';
+                    }
+                    
+                    document.getElementById('stockExchange').textContent = info.exchange || 'N/A';
+                    document.getElementById('stockCurrency').textContent = info.currency || 'N/A';
+                    document.getElementById('stockCountry').textContent = info.country || 'N/A';
+                    document.getElementById('stockMarketCap').textContent = info.market_cap_formatted || 'N/A';
+                    document.getElementById('stockInfo').style.display = 'block';
+                    
+                    // Check if Indian stock and fetch exchange comparison
+                    if (info.country === 'India' || symbol.endsWith('.NS') || symbol.endsWith('.BO')) {
+                        const exchangeData = await fetchExchangeData(symbol);
+                        updateExchangeToggleUI(exchangeData);
+                    }
+                }
+
+                const summary = await summaryRes.json();
+                const stockData = await dataRes.json();
+
+                // Update stats
+                updateStats(summary);
+                updateHealthScore(summary.health_score);
+                updateChart(stockData);
+                updateTechnicalAnalysis(summary, stockData);
+
+                document.getElementById('statsContainer').style.display = 'grid';
+                document.getElementById('healthScoreContainer').style.display = 'flex';
+
+            } catch (error) {
+                console.error('Failed to fetch stock data:', error);
+                document.getElementById('selectedStock').textContent = `Error loading ${symbol}`;
+            } finally {
+                document.getElementById('chartLoading').style.display = 'none';
+            }
+        }
+
+        // Update statistics display
+        function updateStats(summary) {
+            document.getElementById('latestClose').textContent = formatPrice(summary.latest_close);
+            document.getElementById('high52w').textContent = formatPrice(summary.high_52w);
+            document.getElementById('low52w').textContent = formatPrice(summary.low_52w);
+            document.getElementById('avgClose').textContent = formatPrice(summary.avg_close);
+            document.getElementById('volatility').textContent = `${(summary.volatility_annualized * 100).toFixed(2)}%`;
+            
+            const totalReturnEl = document.getElementById('totalReturn');
+            totalReturnEl.textContent = `${summary.total_return > 0 ? '+' : ''}${summary.total_return}%`;
+            totalReturnEl.className = `value ${summary.total_return >= 0 ? 'positive' : 'negative'}`;
+        }
+
+        // Format price based on value
+        function formatPrice(value) {
+            if (value >= 100000) {
+                return value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+            } else if (value >= 1) {
+                return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } else {
+                return value.toFixed(4);
+            }
+        }
+
+        // Update health score display
+        function updateHealthScore(health) {
+            const scoreCircle = document.getElementById('scoreCircle');
+            const score = health.total_score;
+            
+            // Determine color based on score
+            let color;
+            if (score >= 80) color = '#00ff88';
+            else if (score >= 60) color = '#00d4ff';
+            else if (score >= 40) color = '#ffd700';
+            else if (score >= 20) color = '#ff8c00';
+            else color = '#ff6464';
+
+            scoreCircle.style.setProperty('--score-color', color);
+            scoreCircle.style.setProperty('--score-pct', `${score}%`);
+            scoreCircle.style.color = color;
+            
+            document.getElementById('scoreValue').textContent = score.toFixed(0);
+            document.getElementById('scoreCategory').textContent = health.category;
+            document.getElementById('scoreCategory').style.color = color;
+            document.getElementById('scoreDescription').textContent = health.description;
+            
+            document.getElementById('returnScore').textContent = health.components.return_score.toFixed(1);
+            document.getElementById('volScore').textContent = health.components.volatility_score.toFixed(1);
+            document.getElementById('trendScore').textContent = health.components.trend_score.toFixed(1);
+            document.getElementById('posScore').textContent = health.components.position_score.toFixed(1);
+        }
+
+        // Update price chart
+        function updateChart(stockData) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (priceChart) {
+                priceChart.destroy();
+            }
+
+            const labels = stockData.data.map(d => d.date);
+            const prices = stockData.data.map(d => d.close);
+            const ma7 = stockData.data.map(d => d.ma_7);
+
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Close Price',
+                            data: prices,
+                            borderColor: '#00d4ff',
+                            backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '7-Day MA',
+                            data: ma7,
+                            borderColor: '#00ff88',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#888'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#ccc',
+                            borderColor: '#00d4ff',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${formatPrice(context.parsed.y)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#666',
+                                maxRotation: 45
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#666',
+                                callback: function(value) {
+                                    return formatPrice(value);
+                                }
+                            }
+                        }
+                    }
+                }
+                });
+        }
+
+        // Current chart type
+        let currentChartType = 'candle';
+        let candleChart = null;
+        let rsiChart = null;
+        let macdChart = null;
+        let bbChart = null;
+
+        // Update Technical Analysis
+        function updateTechnicalAnalysis(summary, stockData) {
+            // Show technical content
+            document.getElementById('technicalContent').style.display = 'block';
+            document.getElementById('technicalEmpty').style.display = 'none';
+            
+            const tech = summary.technical || {};
+            const ma = summary.moving_averages || {};
+            
+            // Update trend
+            const trendEl = document.getElementById('techTrend');
+            trendEl.textContent = tech.trend || 'Neutral';
+            trendEl.className = `value ${tech.trend === 'Bullish' ? 'positive' : tech.trend === 'Bearish' ? 'negative' : ''}`;
+            
+            // Update RSI
+            document.getElementById('techRSI').textContent = (tech.rsi || 50).toFixed(1);
+            document.getElementById('techRSISignal').textContent = tech.rsi_signal || 'Neutral';
+            
+            // Update MACD
+            document.getElementById('techMACD').textContent = (tech.macd || 0).toFixed(2);
+            document.getElementById('techMACDSignal').textContent = tech.macd_trend || 'Neutral';
+            
+            // Update ATR
+            document.getElementById('techATR').textContent = formatPrice(tech.atr || 0);
+            
+            // Update Support/Resistance
+            document.getElementById('techSupport').textContent = formatPrice(tech.support || 0);
+            document.getElementById('techResistance').textContent = formatPrice(tech.resistance || 0);
+            
+            // Update FVG
+            const fvg = tech.fair_value_gaps || {};
+            document.getElementById('techBullishFVG').textContent = fvg.bullish_fvg_30d || 0;
+            document.getElementById('techBearishFVG').textContent = fvg.bearish_fvg_30d || 0;
+            
+            // Update Moving Averages
+            document.getElementById('ma7Price').textContent = formatPrice(ma.ma_7 || 0);
+            document.getElementById('ma7Status').textContent = ma.price_vs_ma7 || '-';
+            document.getElementById('ma7Status').style.color = ma.price_vs_ma7 === 'Above' ? '#00ff88' : '#ff6464';
+            
+            document.getElementById('ma20Price').textContent = formatPrice(ma.ma_20 || 0);
+            document.getElementById('ma20Status').textContent = ma.price_vs_ma20 || '-';
+            document.getElementById('ma20Status').style.color = ma.price_vs_ma20 === 'Above' ? '#00ff88' : '#ff6464';
+            
+            document.getElementById('ma50Price').textContent = formatPrice(ma.ma_50 || 0);
+            document.getElementById('ma50Status').textContent = ma.price_vs_ma50 || '-';
+            document.getElementById('ma50Status').style.color = ma.price_vs_ma50 === 'Above' ? '#00ff88' : '#ff6464';
+            
+            document.getElementById('ma200Price').textContent = formatPrice(ma.ma_200 || 0);
+            document.getElementById('ma200Status').textContent = ma.price_vs_ma200 || '-';
+            document.getElementById('ma200Status').style.color = ma.price_vs_ma200 === 'Above' ? '#00ff88' : '#ff6464';
+            
+            // Update Bollinger Bands
+            const bb = tech.bollinger || {};
+            document.getElementById('bbUpper').textContent = formatPrice(bb.upper || 0);
+            document.getElementById('bbMiddle').textContent = formatPrice(bb.middle || 0);
+            document.getElementById('bbLower').textContent = formatPrice(bb.lower || 0);
+            
+            const bbPos = bb.position || 50;
+            document.getElementById('bbPositionBar').style.width = `${bbPos}%`;
+            document.getElementById('bbPositionPct').textContent = `${bbPos.toFixed(0)}%`;
+            
+            // Create charts
+            createCandlestickChart(stockData);
+            createRSIChart(stockData);
+            createMACDChart(stockData);
+            createBBChart(stockData);
+        }
+
+        // Switch chart type
+        function switchChartType(type) {
+            currentChartType = type;
+            document.getElementById('chartTypeCandle').classList.toggle('active', type === 'candle');
+            document.getElementById('chartTypeLine').classList.toggle('active', type === 'line');
+        }
+
+        // Create Candlestick Chart
+        function createCandlestickChart(stockData) {
+            if (candleChart) candleChart.destroy();
+            const ctx = document.getElementById('candleChart').getContext('2d');
+            
+            const data = stockData.data;
+            const labels = data.map(d => d.date);
+            const ohlc = data.map(d => [d.open, d.high, d.low, d.close]);
+            
+            // Simple candlestick using bar chart
+            candleChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Price',
+                        data: ohlc.map(d => d[3]), // Close price
+                        backgroundColor: ohlc.map(d => d[3] >= d[0] ? 'rgba(0, 255, 136, 0.5)' : 'rgba(255, 100, 100, 0.5)'),
+                        borderColor: ohlc.map(d => d[3] >= d[0] ? '#00ff88' : '#ff6464'),
+                        borderWidth: 1,
+                        order: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const d = ohlc[context.dataIndex];
+                                    return [
+                                        `Open: ${formatPrice(d[0])}`,
+                                        `High: ${formatPrice(d[1])}`,
+                                        `Low: ${formatPrice(d[2])}`,
+                                        `Close: ${formatPrice(d[3])}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#666', maxRotation: 45 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#666', callback: v => formatPrice(v) }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create RSI Chart
+        function createRSIChart(stockData) {
+            if (rsiChart) rsiChart.destroy();
+            const ctx = document.getElementById('rsiChart').getContext('2d');
+            
+            const data = stockData.data;
+            const labels = data.map(d => d.date);
+            const rsi = data.map(d => d.rsi || 50);
+            
+            rsiChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'RSI',
+                        data: rsi,
+                        borderColor: '#9C27B0',
+                        backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#666' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create MACD Chart
+        function createMACDChart(stockData) {
+            if (macdChart) macdChart.destroy();
+            const ctx = document.getElementById('macdChart').getContext('2d');
+            
+            const data = stockData.data;
+            const labels = data.map(d => d.date);
+            const macd = data.map(d => d.macd || 0);
+            const signal = data.map(d => d.macd_signal || 0);
+            const histogram = data.map(d => d.macd_histogram || 0);
+            
+            macdChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'MACD',
+                            data: macd,
+                            borderColor: '#00d4ff',
+                            backgroundColor: 'transparent',
+                            tension: 0.4,
+                            pointRadius: 0,
+                            order: 1
+                        },
+                        {
+                            type: 'line',
+                            label: 'Signal',
+                            data: signal,
+                            borderColor: '#ff9800',
+                            backgroundColor: 'transparent',
+                            tension: 0.4,
+                            pointRadius: 0,
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Histogram',
+                            data: histogram,
+                            backgroundColor: histogram.map(v => v >= 0 ? 'rgba(0, 255, 136, 0.5)' : 'rgba(255, 100, 100, 0.5)'),
+                            borderColor: histogram.map(v => v >= 0 ? '#00ff88' : '#ff6464'),
+                            borderWidth: 1,
+                            order: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#666' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create Bollinger Bands Chart
+        function createBBChart(stockData) {
+            if (bbChart) bbChart.destroy();
+            const ctx = document.getElementById('bbChart').getContext('2d');
+            
+            const data = stockData.data;
+            const labels = data.map(d => d.date);
+            const close = data.map(d => d.close);
+            const ma20 = data.map(d => d.ma_20);
+            const bbUpper = data.map(d => d.bb_upper);
+            const bbMiddle = data.map(d => d.bb_middle);
+            const bbLower = data.map(d => d.bb_lower);
+            
+            bbChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: close,
+                            borderColor: '#00d4ff',
+                            backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            order: 0
+                        },
+                        {
+                            label: 'MA 20',
+                            data: ma20,
+                            borderColor: '#ff9800',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            order: 1
+                        },
+                        {
+                            label: 'BB Upper',
+                            data: bbUpper,
+                            borderColor: 'rgba(255, 100, 100, 0.5)',
+                            backgroundColor: 'transparent',
+                            borderDash: [3, 3],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            order: 2
+                        },
+                        {
+                            label: 'BB Lower',
+                            data: bbLower,
+                            borderColor: 'rgba(0, 255, 136, 0.5)',
+                            backgroundColor: 'rgba(0, 255, 136, 0.05)',
+                            borderDash: [3, 3],
+                            fill: '-1',
+                            tension: 0.4,
+                            pointRadius: 0,
+                            order: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#888' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#666', maxRotation: 45 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#666', callback: v => formatPrice(v) }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Compare stocks
+        async function compareStocks() {
+            const symbol1 = document.getElementById('compareInput1').value.trim().toUpperCase();
+            const symbol2 = document.getElementById('compareInput2').value.trim().toUpperCase();
+
+            if (!symbol1 || !symbol2) {
+                alert('Please enter both stock symbols to compare');
+                return;
+            }
+
+            if (symbol1 === symbol2) {
+                alert('Please enter different stock symbols');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('comparisonResult').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/compare?symbol1=${symbol1}&symbol2=${symbol2}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(error.detail?.message || 'Failed to compare stocks');
+                    return;
+                }
+                
+                const data = await response.json();
+
+                // Update comparison display
+                document.getElementById('compare1Symbol').textContent = symbol1;
+                document.getElementById('compare2Symbol').textContent = symbol2;
+
+                const m1 = data.metrics[symbol1];
+                const m2 = data.metrics[symbol2];
+
+                document.getElementById('compare1Return').textContent = `${m1.avg_return.toFixed(4)}%`;
+                document.getElementById('compare1Vol').textContent = m1.volatility.toFixed(6);
+                document.getElementById('compare1Total').textContent = `${m1.total_return > 0 ? '+' : ''}${m1.total_return}%`;
+                document.getElementById('compare1Total').className = `value ${m1.total_return >= 0 ? 'positive' : 'negative'}`;
+
+                document.getElementById('compare2Return').textContent = `${m2.avg_return.toFixed(4)}%`;
+                document.getElementById('compare2Vol').textContent = m2.volatility.toFixed(6);
+                document.getElementById('compare2Total').textContent = `${m2.total_return > 0 ? '+' : ''}${m2.total_return}%`;
+                document.getElementById('compare2Total').className = `value ${m2.total_return >= 0 ? 'positive' : 'negative'}`;
+
+                document.getElementById('correlationValue').textContent = 
+                    data.correlation !== null ? data.correlation.toFixed(4) : 'N/A';
+                document.getElementById('correlationDesc').textContent = data.correlation_interpretation;
+
+                document.getElementById('comparisonResult').style.display = 'block';
+
+                // Add to recent searches
+                addToRecentSearches(symbol1, symbol1);
+                addToRecentSearches(symbol2, symbol2);
+
+            } catch (error) {
+                console.error('Failed to compare stocks:', error);
+                alert('Failed to compare stocks. Please check the symbols and try again.');
+            }
+        }
+
+        // ==========================================
+        // NSE/BSE Exchange Toggle Functionality
+        // ==========================================
+        
+        // Current stock state for exchange switching
+        let currentStockSymbol = null;
+        let currentExchangeData = null;
+        let currentExchange = 'NSE';
+
+        // Check if a symbol is an Indian stock
+        function isIndianStock(symbol) {
+            return symbol.endsWith('.NS') || symbol.endsWith('.BO') || 
+                   (!symbol.includes('.') && /^[A-Z]+$/.test(symbol));
+        }
+
+        // Get base symbol without exchange suffix
+        function getBaseSymbol(symbol) {
+            if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) {
+                return symbol.slice(0, -3);
+            }
+            return symbol;
+        }
+
+        // Fetch exchange comparison data for Indian stocks
+        async function fetchExchangeData(symbol) {
+            const baseSymbol = getBaseSymbol(symbol);
+            try {
+                const response = await fetch(`${API_BASE}/stock/${baseSymbol}/exchanges`);
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to fetch exchange data:', error);
+            }
+            return null;
+        }
+
+        // Update exchange toggle UI
+        function updateExchangeToggleUI(exchangeData) {
+            const toggle = document.getElementById('exchangeToggle');
+            const pricesDiv = document.getElementById('exchangePrices');
+            const diffBadge = document.getElementById('priceDiffBadge');
+            
+            if (!exchangeData || !exchangeData.is_indian_stock) {
+                toggle.style.display = 'none';
+                return;
+            }
+
+            toggle.style.display = 'block';
+            currentExchangeData = exchangeData;
+
+            // Build prices display
+            let pricesHtml = '';
+            
+            if (exchangeData.nse && exchangeData.nse.price) {
+                pricesHtml += `
+                    <div class="exchange-price nse">
+                        <span class="label">NSE:</span>
+                        <span class="price">${formatPrice(exchangeData.nse.price)}</span>
+                    </div>
+                `;
+            }
+            
+            if (exchangeData.bse && exchangeData.bse.price) {
+                pricesHtml += `
+                    <div class="exchange-price bse">
+                        <span class="label">BSE:</span>
+                        <span class="price">${formatPrice(exchangeData.bse.price)}</span>
+                    </div>
+                `;
+            }
+            
+            pricesDiv.innerHTML = pricesHtml;
+
+            // Show price difference badge
+            if (exchangeData.price_difference !== null && exchangeData.price_difference !== undefined) {
+                const diff = exchangeData.price_difference;
+                const diffPct = exchangeData.price_difference_pct;
+                let diffClass = 'neutral';
+                let diffText = '';
+                
+                if (Math.abs(diffPct) < 0.01) {
+                    diffText = 'Same price';
+                    diffClass = 'neutral';
+                } else if (diff > 0) {
+                    diffText = `NSE +${diffPct.toFixed(2)}%`;
+                    diffClass = 'positive';
+                } else {
+                    diffText = `BSE +${Math.abs(diffPct).toFixed(2)}%`;
+                    diffClass = 'negative';
+                }
+                
+                diffBadge.textContent = diffText;
+                diffBadge.className = `price-diff-badge ${diffClass}`;
+                diffBadge.style.display = 'inline-block';
+            } else {
+                diffBadge.style.display = 'none';
+            }
+
+            // Update button states
+            updateExchangeButtons();
+        }
+
+        // Update exchange button active states
+        function updateExchangeButtons() {
+            const btnNSE = document.getElementById('btnNSE');
+            const btnBSE = document.getElementById('btnBSE');
+            
+            btnNSE.classList.toggle('active', currentExchange === 'NSE');
+            btnBSE.classList.toggle('active', currentExchange === 'BSE');
+        }
+
+        // Switch between NSE and BSE
+        async function switchExchange(exchange) {
+            if (!currentStockSymbol || !currentExchangeData) return;
+            
+            currentExchange = exchange;
+            updateExchangeButtons();
+            
+            // Determine the correct symbol for the selected exchange
+            const baseSymbol = getBaseSymbol(currentStockSymbol);
+            let targetSymbol;
+            
+            if (exchange === 'NSE') {
+                targetSymbol = baseSymbol + '.NS';
+            } else {
+                targetSymbol = baseSymbol + '.BO';
+            }
+
+            // Reload stock data for the new exchange
+            document.getElementById('chartLoading').style.display = 'flex';
+            
+            try {
+                const [summaryRes, dataRes] = await Promise.all([
+                    fetch(`${API_BASE}/summary/${targetSymbol}`),
+                    fetch(`${API_BASE}/data/${targetSymbol}?days=30`)
+                ]);
+
+                if (summaryRes.ok && dataRes.ok) {
+                    const summary = await summaryRes.json();
+                    const stockData = await dataRes.json();
+
+                    // Update stats and chart
+                    updateStats(summary);
+                    updateHealthScore(summary.health_score);
+                    updateChart(stockData);
+
+                    // Update exchange display
+                    document.getElementById('stockExchange').textContent = exchange;
+                    
+                    // Update displayed symbol without re-fetching exchange data
+                    currentStockSymbol = targetSymbol;
+                }
+            } catch (error) {
+                console.error('Failed to switch exchange:', error);
+            } finally {
+                document.getElementById('chartLoading').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
