@@ -1,5 +1,7 @@
 # Stock Data Intelligence Dashboard
 
+### https://stock-dashboard-chi-eight.vercel.app/
+
 A comprehensive stock market data analysis platform built with FastAPI, providing real-time stock data, technical indicators, and AI-driven insights through a custom Stock Health Score metric.
 
 ## Overview
