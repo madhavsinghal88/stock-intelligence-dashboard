@@ -194,6 +194,65 @@ async def root():
     """)
 
 
+@app.get("/readme", response_class=HTMLResponse, include_in_schema=False)
+async def readme():
+    """Serve the README documentation page."""
+    readme_path = Path(__file__).parent / "README.md"
+    if readme_path.exists():
+        content = readme_path.read_text(encoding="utf-8")
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>README - Stock Intelligence Dashboard</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }}
+        pre {{ background: #f4f4f4; padding: 15px; overflow-x: auto; border-radius: 5px; }}
+        code {{ background: #f4f4f4; padding: 2px 5px; border-radius: 3px; }}
+        table {{ border-collapse: collapse; width: 100%; margin: 15px 0; }}
+        th, td {{ border: 1px solid #ddd; padding: 10px; text-align: left; }}
+        th {{ background: #f4f4f4; }}
+        h1, h2, h3 {{ color: #333; }}
+        a {{ color: #0066cc; }}
+    </style>
+</head>
+<body>
+{_markdown_to_html(content)}
+</body>
+</html>"""
+        return HTMLResponse(content=html_content)
+    return HTMLResponse(content="<h1>README not found</h1>", status_code=404)
+
+
+def _markdown_to_html(md: str) -> str:
+    """Simple markdown to HTML converter."""
+    import re
+    html = md
+    html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+    html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+    html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+    html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+    html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
+    html = re.sub(r'`(.+?)`', r'<code>\1</code>', html)
+    html = re.sub(r'^- (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+    html = re.sub(r'^(\d+)\. (.+)$', r'<li>\2</li>', html, flags=re.MULTILINE)
+    html = re.sub(r'\|(.+)\|', lambda m: '<tr>' + ''.join(f'<td>{c.strip()}</td>' for c in m.group(1).split('|') if c.strip()) + '</tr>', html)
+    html = re.sub(r'---', '<hr>', html)
+    html = re.sub(r'\n\n', '</p><p>', html)
+    html = '<p>' + html + '</p>'
+    html = re.sub(r'<p></p>', '', html)
+    html = re.sub(r'<p>(<h[1-3]>)', r'\1', html)
+    html = re.sub(r'(</h[1-3>])</p>', r'\1', html)
+    html = re.sub(r'<p>(<li>)', r'\1', html)
+    html = re.sub(r'(</li>)</p>', r'\1', html)
+    html = re.sub(r'<p>(<hr>)', r'\1', html)
+    html = re.sub(r'(<hr>)</p>', r'\1', html)
+    html = re.sub(r'<p>(<pre>)', r'\1', html)
+    html = re.sub(r'(</pre>)</p>', r'\1', html)
+    return html
+
+
 @app.get(
     "/companies",
     response_model=List[CompanyInfo],
